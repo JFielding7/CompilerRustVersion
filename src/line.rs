@@ -32,6 +32,12 @@ pub(crate)  struct Line<'a> {
     pub(crate) tokens: &'a Vec<String>
 }
 
+impl<'a> Line<'a> {
+    pub fn get_token(self, i: usize) -> &'a String {
+        &self.tokens[i - self.start]
+    }
+}
+
 fn get_indent_level(indent_token: &String) -> Result<usize, CompilerError> {
     let mut count = 0;
     for char in indent_token.chars() {
@@ -73,3 +79,5 @@ impl<'a> Iterator for LineIterator<'a> {
         None
     }
 }
+
+

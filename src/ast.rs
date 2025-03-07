@@ -1,9 +1,28 @@
 use crate::ast_node::{AstNode, Namespace};
-use crate::line_iterator::{Line, LineIterator};
+use crate::line::{Line, LineIterator};
 
 fn create_ast_node(curr_line: &Line, namespaces: &Vec<Box<dyn AstNode>>) {
+    let start_token = curr_line.get_token(0);
+
 
 }
+
+/*
+char *token = vec_get(tokenv, curr_line->start);
+
+    // printf("Cheking def %s %lu\n", token, curr_line->start);
+    type *symbol_type = get_type(token);
+    if (symbol_type != NULL) {
+        // puts("DEF");
+        assert_has_min_tokens(MIN_SYMBOL_DEF_LEN, curr_line->start, curr_line);
+        return symbol_definition(tokenv, symbol_type, curr_line, namespaces);
+    }
+
+    puts("Parsing");
+    namespace *ns = vec_get(namespaces, 0);
+    printf("len: %lu\n", vec_len(ns->vars));
+    return parse_expression(tokenv, curr_line, curr_line->start, curr_line->end, vec_peek_end(namespaces));
+ */
 
 fn generate_ast(filename: &String, tokens: Vec<String>) {
     let namespaces: Vec<Namespace> = vec![];
@@ -16,28 +35,3 @@ fn generate_ast(filename: &String, tokens: Vec<String>) {
         }
     }
 }
-// vec namespaces = vec_new();
-//
-// line_iterator iter;
-// init_line_iterator(&iter, filename, tokenv);
-//
-// line *curr_line = next_line(&iter);
-// while (curr_line != NULL) {
-//
-// if (vec_len(namespaces) > 0) {
-// namespace *ns = vec_get(namespaces, 0);
-// printf("curr len: %lu\n", vec_len(ns->vars));
-// }
-//
-// if (curr_line->start < curr_line->end) {
-// ast_node *node = create_ast_node(tokenv, curr_line, namespaces);
-// puts("Node:");
-// ast_tree_print(node);
-// }
-// curr_line = next_line(&iter);
-// }
-//
-// vec_free(namespaces);
-//
-// return NULL;
-// }
