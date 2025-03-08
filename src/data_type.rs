@@ -1,13 +1,8 @@
-use std::cell::RefCell;
+use std::collections::HashMap;
 
 pub struct Type {
-    pub name: String,
-    pub size: usize,
+    size: usize,
     validate_literal: fn(&str) -> bool,
-}
-
-thread_local! {
-    static TYPES: RefCell<Vec<Type>> = RefCell::new(Vec::new());
 }
 
 fn valid_i64_literal(literal: &str) -> bool {
@@ -20,19 +15,23 @@ fn valid_str_literal(literal: &str) -> bool {
     len > 1 && literal_bytes[0] == b'"' && literal_bytes[len - 1] == b'"'
 }
 
+pub fn compile_native_types() -> HashMap<String, Type> {
+    const NATIVE_TYPE_COUNT: usize = 2;
+    const NATIVE_TYPES: [(&str, usize, fn(&str) -> bool); NATIVE_TYPE_COUNT] = [
+        ("i64", 8, valid_i64_literal),
+        ("str", 8, valid_str_literal)
+    ];
+
+    let mut types = HashMap::with_capacity(NATIVE_TYPE_COUNT);
+    NATIVE_TYPES.iter().for_each(|&(name, size, value)| {
+        types.insert(name.to_string(), Type::new(size, value));
+    });
+
+    types
+}
+
 impl Type {
-    pub fn new(name: String, size: usize, validate_literal: fn(&str) -> bool) -> Type {
-        Self {name, size, validate_literal }
-    }
-
-    pub fn compile_native_types() {
-        const NATIVE_TYPES: [(&str, usize, fn(&str) -> bool); 2] = [
-            ("i64", 8, valid_i64_literal),
-            ("str", 8, valid_str_literal)
-        ];
-
-        for (name, size, value) in NATIVE_TYPES {
-            TYPES.with(|types| types.borrow_mut().push(Type::new(name.to_string(), size, value)));
-        }
+    pub fn new(size: usize, validate_literal: fn(&str) -> bool) -> Self {
+        Self { size, validate_literal }
     }
 }
