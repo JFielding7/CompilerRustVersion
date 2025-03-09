@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+#[derive(Debug)]
 pub struct Type {
     size: usize,
     validate_literal: fn(&str) -> bool,

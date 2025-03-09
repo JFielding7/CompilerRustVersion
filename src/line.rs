@@ -1,27 +1,6 @@
 use crate::compiler_error::CompilerError;
 use crate::compiler_error::CompilerError::IndentError;
 
-const TAB_WIDTH: usize = 4;
-
-pub struct LineIterator<'a> {
-    curr_line: Line<'a>
-}
-
-impl<'a> LineIterator<'a> {
-    pub fn new(filename: &'a String, tokens: &'a Vec<String>) -> Self {
-        LineIterator {
-            curr_line: Line {
-                line_num: 0,
-                start: 0,
-                end: 0,
-                indent: 0,
-                file_name: filename,
-                tokens,
-            }
-        }
-    }
-}
-
 #[derive(Copy, Clone, Debug)]
 pub struct Line<'a> {
     pub line_num: usize,
@@ -29,7 +8,7 @@ pub struct Line<'a> {
     pub end: usize,
     pub indent: usize,
     pub file_name: &'a String,
-    pub tokens: &'a Vec<String>
+    pub tokens: &'a [String]
 }
 
 impl<'a> Line<'a> {
@@ -37,7 +16,13 @@ impl<'a> Line<'a> {
         &self.tokens[i - self.start]
     }
 
+    pub fn len(&self) -> usize {
+        self.tokens.len()
+    }
+
     fn set_indent_level(&mut self) -> Result<(), CompilerError> {
+        const TAB_WIDTH: usize = 4;
+
         let mut count = 0;
         for char in self.tokens[self.start].chars() {
             match char {
@@ -55,8 +40,29 @@ impl<'a> Line<'a> {
     }
 }
 
+pub struct LineIterator<'a> {
+    curr_line: Line<'a>,
+    tokens: Vec<String>
+}
+
+impl<'a> LineIterator<'a> {
+    pub fn new(filename: &'a String, tokens: Vec<String>) -> Self {
+        LineIterator {
+            curr_line: Line {
+                line_num: 0,
+                start: 0,
+                end: 0,
+                indent: 0,
+                file_name: filename,
+                tokens: &[],
+            },
+            tokens
+        }
+    }
+}
+
 impl<'a> Iterator for LineIterator<'a> {
-    type Item = Line<'a>;
+    type Item = Box<Line<'a>>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let line = &mut self.curr_line;
@@ -70,7 +76,8 @@ impl<'a> Iterator for LineIterator<'a> {
         while line.end < line.tokens.len() {
             let token = &line.tokens[line.end];
             if token.chars().next().unwrap() == '\n' {
-                return Some(*line);
+                line.tokens = &line.tokens[line.start..line.end];
+                return Some(Box::new(*line));
             }
             line.end += 1;
         }

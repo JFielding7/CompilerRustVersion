@@ -8,6 +8,8 @@ pub enum CompilerError {
     InvalidSymbol(usize, String),
     #[error("Error: Line {0}: Symbol `{1}` already defined")]
     SymbolAlreadyDefined(usize, String),
+    #[error("Error: Line {0}: Expected `{1}`")]
+    InvalidToken(usize, String),
 }
 
 pub fn raise_compiler_error(e: CompilerError) {
