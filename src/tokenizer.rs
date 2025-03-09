@@ -10,10 +10,14 @@ fn read_source_file(name: &String) -> io::Result<String> {
     Ok(content)
 }
 
-pub(crate) fn tokenize_file(filename: &String) -> io::Result<Vec<String>> {
+pub fn tokenize_file(filename: &String) -> io::Result<Vec<String>> {
     const TOKEN_REGEX: &str = "\n[ \t]*|[-+*/%|&~^()=,]|\\w+|\".*?\"";
     let regex = Regex::new(TOKEN_REGEX).unwrap();
 
     let code= read_source_file(filename)?;
-    Ok(regex.captures_iter(&code).map(|token| token[0].to_string()).collect())
+
+    let mut tokens = vec!["\n".to_string()];
+    regex.captures_iter(&code).for_each(|token| tokens.push(token[0].to_string()));
+    tokens.push("\n".to_string());
+    Ok(tokens)
 }

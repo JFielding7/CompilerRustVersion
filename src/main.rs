@@ -1,9 +1,14 @@
+use crate::ast::generate_ast;
+use crate::compiler_error::{raise_compiler_error, CompilerError};
+use crate::data_type::compile_native_types;
+
 mod tokenizer;
 mod ast;
 mod line;
 mod compiler_error;
 mod ast_node;
 mod data_type;
+mod expression;
 
 fn main() {
     const MIN_ARG_COUNT: usize = 2;
@@ -15,7 +20,5 @@ fn main() {
         panic!("{}: ERROR: No input files", args[0]);
     }
 
-    for arg in args {
-
-    }
+    generate_ast(&args[1], &mut compile_native_types());
 }

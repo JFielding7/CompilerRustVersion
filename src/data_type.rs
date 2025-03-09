@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 #[derive(Debug)]
 pub struct Type {
+    name: String,
     size: usize,
     validate_literal: fn(&str) -> bool,
 }
@@ -25,14 +26,24 @@ pub fn compile_native_types() -> HashMap<String, Type> {
 
     let mut types = HashMap::with_capacity(NATIVE_TYPE_COUNT);
     NATIVE_TYPES.iter().for_each(|&(name, size, value)| {
-        types.insert(name.to_string(), Type::new(size, value));
+        types.insert(name.to_string(), Type::new(name.to_string(), size, value));
     });
 
     types
 }
 
+pub fn get_literal_type<'a>(types: &'a HashMap<String, Type>, literal: &str) -> Option<&'a Type> {
+    for data_type in types.values() {
+        if (data_type.validate_literal)(literal) {
+            return Some(data_type);
+        }
+    }
+
+    None
+}
+
 impl Type {
-    pub fn new(size: usize, validate_literal: fn(&str) -> bool) -> Self {
-        Self { size, validate_literal }
+    pub fn new(name: String, size: usize, validate_literal: fn(&str) -> bool) -> Self {
+        Self { name, size, validate_literal }
     }
 }
