@@ -1,10 +1,23 @@
 use std::collections::HashMap;
+use std::fmt::Display;
 
 #[derive(Debug)]
 pub struct Type {
     name: String,
     size: usize,
     validate_literal: fn(&str) -> bool,
+}
+
+impl PartialEq<Self> for Type {
+    fn eq(&self, other: &Self) -> bool {
+        self.name == other.name
+    }
+}
+
+impl Display for Type {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.name.clone())
+    }
 }
 
 fn valid_i64_literal(literal: &str) -> bool {

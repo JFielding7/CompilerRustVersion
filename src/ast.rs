@@ -42,7 +42,7 @@ fn assert_correct_delimiter(i: usize, line: &Line) {
 
     let token = &line.tokens[i];
     if token != delimiter {
-        raise_compiler_error(CompilerError::InvalidToken(line.line_num, token.to_string()));
+        raise_compiler_error(CompilerError::UnexpectedToken(line.line_num, token.to_string()));
     }
 }
 

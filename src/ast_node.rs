@@ -79,13 +79,19 @@ impl<'a> Function<'a> {
 
 pub struct BinaryOperator<'a> {
     expr_type: &'a Type,
-    left: Box<dyn ASTNode>,
-    right: Box<dyn ASTNode>
+    left: Box<dyn ASTNode +'a>,
+    right: Box<dyn ASTNode +'a>,
 }
 
 impl<'a> BinaryOperator<'a> {
-    pub fn new(expr_type: &'a Type, left: Box<dyn ASTNode>, right: Box<dyn ASTNode>) -> Self {
-        Self { expr_type, left, right }
+    pub fn new(left: Box<dyn ASTNode + 'a>, right: Box<dyn ASTNode +'a>) -> Self {
+        Self { expr_type: left.get_type(), left, right }
+    }
+}
+
+impl<'a> ASTNode for BinaryOperator<'a> {
+    fn get_type(&self) -> &'a Type {
+        &self.expr_type
     }
 }
 
@@ -109,12 +115,13 @@ impl<'a> Namespace<'a> {
             return Some(var.clone())
         }
 
-        let mut namespace_opt = &self.parent;
+        let mut namespace_opt = self.parent.clone();
         while let Some(namespace) = namespace_opt {
-            if let Some(var) = namespace.borrow().vars.get(var_name) {
+            let curr_namespace =  namespace.borrow();
+            if let Some(var) = curr_namespace.vars.get(var_name) {
                 return Some(var.clone());
             }
-            namespace_opt = &namespace.borrow().parent;
+            namespace_opt = curr_namespace.parent.clone();
         }
 
         None

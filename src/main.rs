@@ -1,5 +1,4 @@
 use crate::ast::generate_ast;
-use crate::compiler_error::{raise_compiler_error, CompilerError};
 use crate::data_type::compile_native_types;
 
 mod tokenizer;
