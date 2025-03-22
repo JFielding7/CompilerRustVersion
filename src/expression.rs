@@ -19,7 +19,7 @@ struct Expression<'a> {
     line: &'a Line<'a>,
     op_group_index: usize,
     paren_matches: &'a mut [usize],
-    types: &'a HashMap<String, Type>,
+    types: &'a HashMap<String, Rc<Type>>,
     namespace: Rc<Namespace<'a>>,
 }
 
@@ -28,7 +28,7 @@ impl<'a> Expression<'a> {
            start: usize,
            end: usize,
            paren_matches: &'a mut [usize],
-           types: &'a HashMap<String, Type>,
+           types: &'a HashMap<String, Rc<Type>>,
            namespace: Rc<Namespace<'a>>
     ) -> Self {
         Self {
@@ -153,7 +153,7 @@ fn assignment_parser(expression: &mut Expression) -> Result<Box<dyn ASTNode>, Co
     let value = parse_expression(expression);
     match value {
         Ok(node) => {
-            Ok(Box::new(BinaryOperator::new(Box::new(var_node), node)))
+            Ok(Box::new(BinaryOperator::new(Box::new(var_node.clone()), node)))
         }
         err => err,
     }
@@ -235,7 +235,7 @@ fn match_parens(expression: &mut Expression) {
 fn expression_node(line: &Line,
                    start: usize,
                    end: usize,
-                   types: &HashMap<String, Type>,
+                   types: &HashMap<String, Rc<Type>>,
                    namespace: Rc<Namespace>
 ) -> Result<Box<dyn ASTNode>, CompilerError> {
     let mut paren_matches = vec![end - start];

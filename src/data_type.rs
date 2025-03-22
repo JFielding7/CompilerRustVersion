@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::fmt::Display;
+use std::rc::Rc;
 
 #[derive(Debug)]
 pub struct Type {
@@ -30,7 +31,7 @@ fn valid_str_literal(literal: &str) -> bool {
     len > 1 && literal_bytes[0] == b'"' && literal_bytes[len - 1] == b'"'
 }
 
-pub fn compile_native_types() -> HashMap<String, Type> {
+pub fn compile_native_types() -> HashMap<String, Rc<Type>> {
     const NATIVE_TYPE_COUNT: usize = 2;
     const NATIVE_TYPES: [(&str, usize, fn(&str) -> bool); NATIVE_TYPE_COUNT] = [
         ("i64", 8, valid_i64_literal),
@@ -39,16 +40,16 @@ pub fn compile_native_types() -> HashMap<String, Type> {
 
     let mut types = HashMap::with_capacity(NATIVE_TYPE_COUNT);
     NATIVE_TYPES.iter().for_each(|&(name, size, value)| {
-        types.insert(name.to_string(), Type::new(name.to_string(), size, value));
+        types.insert(name.to_string(), Rc::new(Type::new(name.to_string(), size, value)));
     });
 
     types
 }
 
-pub fn get_literal_type<'a>(types: &'a HashMap<String, Type>, literal: &str) -> Option<&'a Type> {
+pub fn get_literal_type(types: &HashMap<String, Rc<Type>>, literal: &str) -> Option<Rc<Type>> {
     for data_type in types.values() {
         if (data_type.validate_literal)(literal) {
-            return Some(data_type);
+            return Some(data_type.clone());
         }
     }
 

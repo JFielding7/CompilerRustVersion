@@ -4,46 +4,52 @@ use std::rc::Rc;
 use crate::data_type::Type;
 
 pub trait ASTNode {
-    fn get_type(&self) -> &Type;
+    fn get_type(&self) -> Rc<Type>;
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Debug)]
 pub struct VarNode<'a> {
-    data_type: &'a Type,
-    name: &'a str
+    data_type: Rc<Type>,
+    name: &'a str,
 }
 
-impl<'a> ASTNode for VarNode<'a> {
-    fn get_type(&self) -> &'a Type {
-        &self.data_type
+impl ASTNode for VarNode<'_> {
+    fn get_type(&self) -> Rc<Type> {
+        self.data_type.clone()
     }
 }
 
 impl<'a> VarNode<'a> {
-    pub fn new(data_type: &'a Type, name: &'a str) -> Self {
+    pub fn new(data_type: Rc<Type>, name: &'a str) -> Self {
         Self { data_type, name }
     }
 }
 
+impl<'a> Clone for VarNode<'a> {
+    fn clone(&self) -> Self {
+        VarNode::new(self.data_type.clone(), self.name)
+    }
+}
+
 pub struct Literal<'a> {
-    data_type: &'a Type,
-    value: &'a str
+    data_type: Rc<Type>,
+    value: &'a str,
 }
 
 impl<'a> ASTNode for Literal<'a> {
-    fn get_type(&self) -> &'a Type {
-        &self.data_type
+    fn get_type(&self) -> Rc<Type> {
+        self.data_type.clone()
     }
 }
 
 impl<'a> Literal<'a> {
-    pub fn new(data_type: &'a Type, value: &'a str) -> Self {
+    pub fn new(data_type: Rc<Type>, value: &'a str) -> Self {
         Self { data_type, value }
     }
 }
 
 pub struct Function<'a> {
-    ret_type: &'a Type,
+    ret_type: Rc<Type>,
     name: &'a String,
     pub param_count: usize,
     pub namespace: Rc<RefCell<Namespace<'a>>>,
@@ -51,13 +57,13 @@ pub struct Function<'a> {
 }
 
 impl<'a> ASTNode for Function<'a> {
-    fn get_type(&self) -> &'a Type {
-        &self.ret_type
+    fn get_type(&self) -> Rc<Type> {
+        self.ret_type.clone()
     }
 }
 
 impl<'a> Function<'a> {
-    pub fn new(ret_type: &'a Type, name: &'a String) -> Self {
+    pub fn new(ret_type: Rc<Type>, name: &'a String) -> Self {
         Self {
             ret_type,
             name,
@@ -77,21 +83,21 @@ impl<'a> Function<'a> {
     }
 }
 
-pub struct BinaryOperator<'a> {
-    expr_type: &'a Type,
-    left: Box<dyn ASTNode +'a>,
-    right: Box<dyn ASTNode +'a>,
+pub struct BinaryOperator {
+    expr_type: Rc<Type>,
+    left: Box<dyn ASTNode>,
+    right: Box<dyn ASTNode>,
 }
 
-impl<'a> BinaryOperator<'a> {
-    pub fn new(left: Box<dyn ASTNode + 'a>, right: Box<dyn ASTNode +'a>) -> Self {
+impl BinaryOperator {
+    pub fn new(left: Box<dyn ASTNode>, right: Box<dyn ASTNode>) -> Self {
         Self { expr_type: left.get_type(), left, right }
     }
 }
 
-impl<'a> ASTNode for BinaryOperator<'a> {
-    fn get_type(&self) -> &'a Type {
-        &self.expr_type
+impl ASTNode for BinaryOperator {
+    fn get_type(&self) -> Rc<Type> {
+        self.expr_type.clone()
     }
 }
 

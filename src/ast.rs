@@ -46,19 +46,19 @@ fn assert_correct_delimiter(i: usize, line: &Line) {
     }
 }
 
-fn var_def_node<'a>(data_type: &'a Type, line: &Line<'a>, namespace: Rc<RefCell<Namespace<'a>>>) -> VarNode<'a> {
+fn var_def_node<'a>(data_type: Rc<Type>, line: &Line<'a>, namespace: Rc<RefCell<Namespace<'a>>>) -> VarNode<'a> {
     const VAR_NAME_INDEX: usize = 1;
 
     let var_name = &line.tokens[1];
     assert_unique_var(var_name, line, namespace.clone());
 
     let var_node = VarNode::new(data_type, var_name);
-    namespace.borrow_mut().add_var(var_node);
+    namespace.borrow_mut().add_var(var_node.clone());
     println!("Var Node: {:?}", namespace.borrow());
     var_node
 }
 
-fn function_def_node<'a>(ret_type: &'a Type, line: &Line<'a>, types: &'a HashMap<String, Type>) -> Function<'a> {
+fn function_def_node<'a>(ret_type: Rc<Type>, line: &Line<'a>, types: &'a HashMap<String, Rc<Type>>) -> Function<'a> {
     const NAME_INDEX: usize = 1;
     const PARAM_START_INDEX: usize = 3;
 
@@ -81,7 +81,7 @@ fn function_def_node<'a>(ret_type: &'a Type, line: &Line<'a>, types: &'a HashMap
             assert_correct_delimiter(i, line);
 
             assert_unique_var(param_name, &line, func_node.namespace.clone());
-            func_node.add_param(VarNode::new(param_type, param_name));
+            func_node.add_param(VarNode::new(param_type.clone(), param_name));
             i += 1;
         }
     }
@@ -89,9 +89,9 @@ fn function_def_node<'a>(ret_type: &'a Type, line: &Line<'a>, types: &'a HashMap
     func_node
 }
 
-fn symbol_definition<'a>(data_type: &'a Type,
+fn symbol_definition<'a>(data_type: Rc<Type>,
                          curr_line: &Line<'a>,
-                         types: &'a HashMap<String, Type>,
+                         types: &'a HashMap<String, Rc<Type>>,
                          namespace: &mut Rc<RefCell<Namespace<'a>>>
 ) -> Result<Box<dyn ASTNode + 'a>, CompilerError> {
     let symbol = &curr_line.tokens[1];
@@ -117,16 +117,15 @@ fn symbol_definition<'a>(data_type: &'a Type,
 }
 
 fn create_ast_node<'a>(curr_line: &Line<'a>,
-                       types: &'a HashMap<String, Type>,
+                       types: &'a HashMap<String, Rc<Type>>,
                        namespace: &mut Rc<RefCell<Namespace<'a>>>
 ) -> Result<Box<dyn ASTNode + 'a>, CompilerError> {
     let start_token = curr_line.get_token(0);
 
     if let Some(data_type) = types.get(start_token) {
-        println!("Ns mid: {:?}", namespace.borrow());
         const MIN_DEF_TOKENS: usize = 4;
         assert_has_min_tokens(MIN_DEF_TOKENS, curr_line);
-        return symbol_definition(data_type, curr_line, types, namespace);
+        return symbol_definition(data_type.clone(), curr_line, types, namespace);
     }
 
     Err(CompilerError::InvalidDefinition(curr_line.line_num))
@@ -143,7 +142,7 @@ fn update_namespace(line: &Line, prev_indent: usize, namespace: &mut Rc<RefCell<
     }
 }
 
-pub fn generate_ast(filename: &String, types: &mut HashMap<String, Type>) {
+pub fn generate_ast(filename: &String, types: &mut HashMap<String, Rc<Type>>) {
     let tokens = tokenize_file(filename).unwrap();
 
     let mut namespace = Rc::new(RefCell::new(Namespace::new()));
