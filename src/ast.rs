@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::rc::Rc;
 use regex::Regex;
 use crate::ast_node::{ASTNode, Function, Namespace, VarNode};
-use crate::data_type::Type;
+use crate::data_type::{compile_native_types, Type};
 use crate::line::{Line, LineIterator};
 use crate::compiler_error::{raise_compiler_error, CompilerError};
 use crate::tokenizer::tokenize_file;
@@ -46,7 +46,7 @@ fn assert_correct_delimiter(i: usize, line: &Line) {
     }
 }
 
-fn var_def_node<'a>(data_type: Rc<Type>, line: &Line<'a>, namespace: Rc<RefCell<Namespace<'a>>>) -> VarNode<'a> {
+fn var_def_node(data_type: Rc<Type>, line: &Line, namespace: Rc<RefCell<Namespace>>) -> VarNode {
     const VAR_NAME_INDEX: usize = 1;
 
     let var_name = &line.tokens[1];
@@ -58,7 +58,7 @@ fn var_def_node<'a>(data_type: Rc<Type>, line: &Line<'a>, namespace: Rc<RefCell<
     var_node
 }
 
-fn function_def_node<'a>(ret_type: Rc<Type>, line: &Line<'a>, types: &'a HashMap<String, Rc<Type>>) -> Function<'a> {
+fn function_def_node(ret_type: Rc<Type>, line: &Line, types: &HashMap<String, Rc<Type>>) -> Function {
     const NAME_INDEX: usize = 1;
     const PARAM_START_INDEX: usize = 3;
 
@@ -89,11 +89,11 @@ fn function_def_node<'a>(ret_type: Rc<Type>, line: &Line<'a>, types: &'a HashMap
     func_node
 }
 
-fn symbol_definition<'a>(data_type: Rc<Type>,
-                         curr_line: &Line<'a>,
-                         types: &'a HashMap<String, Rc<Type>>,
-                         namespace: &mut Rc<RefCell<Namespace<'a>>>
-) -> Result<Box<dyn ASTNode + 'a>, CompilerError> {
+fn symbol_definition(data_type: Rc<Type>,
+                         curr_line: &Line,
+                         types: &HashMap<String, Rc<Type>>,
+                         namespace: &mut Rc<RefCell<Namespace>>
+) -> Result<Box<dyn ASTNode>, CompilerError> {
     let symbol = &curr_line.tokens[1];
     assert_valid_symbol(symbol, curr_line);
 
@@ -116,10 +116,10 @@ fn symbol_definition<'a>(data_type: Rc<Type>,
     }
 }
 
-fn create_ast_node<'a>(curr_line: &Line<'a>,
-                       types: &'a HashMap<String, Rc<Type>>,
-                       namespace: &mut Rc<RefCell<Namespace<'a>>>
-) -> Result<Box<dyn ASTNode + 'a>, CompilerError> {
+fn create_ast_node(curr_line: &Line,
+                       types: &HashMap<String, Rc<Type>>,
+                       namespace: &mut Rc<RefCell<Namespace>>
+) -> Result<Box<dyn ASTNode>, CompilerError> {
     let start_token = curr_line.get_token(0);
 
     if let Some(data_type) = types.get(start_token) {
@@ -142,8 +142,9 @@ fn update_namespace(line: &Line, prev_indent: usize, namespace: &mut Rc<RefCell<
     }
 }
 
-pub fn generate_ast(filename: &String, types: &mut HashMap<String, Rc<Type>>) {
+pub fn generate_ast(filename: &String) {
     let tokens = tokenize_file(filename).unwrap();
+    let mut types = compile_native_types();
 
     let mut namespace = Rc::new(RefCell::new(Namespace::new()));
     let mut line_iter = LineIterator::new(filename, &tokens);
@@ -154,7 +155,7 @@ pub fn generate_ast(filename: &String, types: &mut HashMap<String, Rc<Type>>) {
             update_namespace(&curr_line, prev_indent, &mut namespace);
             prev_indent = curr_line.indent;
 
-            match create_ast_node(&curr_line, types, &mut namespace) {
+            match create_ast_node(&curr_line, &mut types, &mut namespace) {
                 Ok(node) => {
                     println!("{:?}", node.get_type());
                 }

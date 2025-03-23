@@ -18,7 +18,7 @@ struct Expression<'a> {
     token_index: usize,
     line: &'a Line<'a>,
     op_group_index: usize,
-    paren_matches: &'a mut [usize],
+    paren_matches: &'a [usize],
     types: &'a HashMap<String, Rc<Type>>,
     namespace: Rc<Namespace<'a>>,
 }
@@ -27,7 +27,6 @@ impl<'a> Expression<'a> {
     fn new(line: &'a Line,
            start: usize,
            end: usize,
-           paren_matches: &'a mut [usize],
            types: &'a HashMap<String, Rc<Type>>,
            namespace: Rc<Namespace<'a>>
     ) -> Self {
@@ -36,13 +35,13 @@ impl<'a> Expression<'a> {
             token_index: 0,
             line,
             op_group_index: 0,
-            paren_matches,
+            paren_matches: &[],
             types,
             namespace,
         }
     }
 
-    fn sub_expression(&'a mut self, tokens: &'a [String], op_group_index: usize) -> Self {
+    fn sub_expression(&'a self, tokens: &'a [String], op_group_index: usize) -> Self {
         Expression {
             tokens,
             token_index: 0,
@@ -87,25 +86,25 @@ static OPERATORS: [phf::Map<&'static str, fn(expression: &Expression) -> Result<
 fn get_operator_parser<'a>(
     expression: &Expression
 ) -> Option<fn(expression: &Expression) -> Result<Box<dyn ASTNode>, CompilerError>> {
-    for (&token, &operator) in &OPERATORS[expression.op_group_index] {
-        if token == expression[expression.token_index] {
-            return Some(operator);
-        }
+    if let Some(&parser) = OPERATORS[expression.op_group_index]
+        .get(&expression.tokens[expression.token_index]) {
+        return Some(parser)
     }
 
     None
 }
 
-fn binary_operation_parser(expression: &mut Expression) -> Result<Box<dyn ASTNode>, CompilerError> {
+fn binary_operation_parser<'a>(expression: &'a mut Expression) -> Result<Box<dyn ASTNode + 'a>, CompilerError> {
     let op_index = expression.token_index;
     let op_group_index = expression.op_group_index;
 
     expression.tokens = &expression.tokens[..op_index];
-    let left = parse_expression(expression)?;
+    let mut sub_expr = expression.sub_expression(expression.tokens, op_group_index);
+    let left: Box<dyn ASTNode + 'a> = parse_expression(&mut sub_expr)?;
 
     expression.op_group_index = op_group_index + 1;
     expression.tokens = &expression.tokens[op_group_index+1..];
-    let right = parse_expression(expression)?;
+    let right: Box<dyn ASTNode + 'a> = parse_expression(expression)?;
 
     if left.get_type() != right.get_type() {
         Err(BinaryOperatorTypeError(
@@ -113,7 +112,8 @@ fn binary_operation_parser(expression: &mut Expression) -> Result<Box<dyn ASTNod
             left.get_type().to_string(), right.get_type().to_string())
         )
     } else {
-        Ok(Box::new(BinaryOperator::new(left, right)))
+        let x = Box::new(BinaryOperator::new(left, right));
+        Ok(x)
     }
 }
 
@@ -137,7 +137,7 @@ fn mod_parser(expression: &Expression) -> Result<Box<dyn ASTNode>, CompilerError
     Err(InvalidExpression(expression.line.line_num))
 }
 
-fn assignment_parser(expression: &mut Expression) -> Result<Box<dyn ASTNode>, CompilerError> {
+fn assignment_parser<'a>(expression: &'a mut Expression) -> Result<Box<dyn ASTNode + 'a>, CompilerError> {
     if expression.token_index != 1 {
         return Err(InvalidAssignment(expression.line.line_num));
     }
@@ -146,32 +146,26 @@ fn assignment_parser(expression: &mut Expression) -> Result<Box<dyn ASTNode>, Co
     if var_node_opt.is_none() {
         return Err(InvalidSymbol(expression.line.line_num, expression.tokens[0].to_string()));
     }
-    let var_node = var_node_opt.unwrap();
 
-    // let mut assignment_expr = expression.clone();
-    // assignment_expr.tokens = expression.tokens;
-    let value = parse_expression(expression);
-    match value {
-        Ok(node) => {
-            Ok(Box::new(BinaryOperator::new(Box::new(var_node.clone()), node)))
-        }
-        err => err,
-    }
+    let var_node = Box::new(var_node_opt.unwrap().clone());
+    let mut assignment_expr = expression.sub_expression(
+        &expression.tokens[expression.token_index + 1..], 0);
+
+    Ok(Box::new(BinaryOperator::new(var_node, parse_expression(&mut assignment_expr)?)))
 }
 
-fn parse_parenthetical_expression(expression: &mut Expression) -> Result<Box<dyn ASTNode>, CompilerError> {
+fn parse_parenthetical_expression<'a>(expression: &'a mut Expression) -> Result<Box<dyn ASTNode +'a>, CompilerError> {
     expression.tokens = &expression.tokens[1..expression.tokens.len() - 1];
     expression.op_group_index = 0;
     parse_expression(expression)
 }
 
-fn parse_value(expression: &Expression) -> Result<Box<dyn ASTNode>, CompilerError> {
+fn parse_value<'a>(expression: &'a Expression<'a>) -> Result<Box<dyn ASTNode + 'a>, CompilerError> {
     let token = &expression.tokens[expression.token_index];
 
     if let Some(literal_type) = get_literal_type(expression.types, token) {
-        return Ok(Box::new(Literal::new(literal_type, token)));
+        return Ok(Box::new(Literal::new(literal_type.clone(), token)));
     }
-
     if let Some(var_node) = expression.namespace.get_var(token) {
         return Ok(Box::new(var_node));
     }
@@ -179,7 +173,7 @@ fn parse_value(expression: &Expression) -> Result<Box<dyn ASTNode>, CompilerErro
     Err(InvalidSymbol(expression.line.line_num, token.to_string()))
 }
 
-fn parse_expression(expression: &mut Expression) -> Result<Box<dyn ASTNode>, CompilerError> {
+fn parse_expression<'a>(expression: &'a mut Expression<'a>) -> Result<Box<dyn ASTNode + 'a>, CompilerError> {
     if expression.len() == 1 {
         return parse_value(expression);
     }
@@ -196,6 +190,7 @@ fn parse_expression(expression: &mut Expression) -> Result<Box<dyn ASTNode>, Com
                 expression.token_index = expression.paren_matches[expression.token_index]
             } else {
                 if let Some(operator) = get_operator_parser(&expression) {
+                    // incorrect lifetime
                     return operator(&expression);
                 }
             }
@@ -213,7 +208,8 @@ fn parse_expression(expression: &mut Expression) -> Result<Box<dyn ASTNode>, Com
     Err(InvalidExpression(expression.line.line_num))
 }
 
-fn match_parens(expression: &mut Expression) {
+fn match_parens(expression: &Expression) -> Vec<usize> {
+    let paren_matches = vec![0; expression.len()];
     let mut open_parens = Vec::new();
 
     for (i, token) in expression.tokens.iter().enumerate() {
@@ -223,13 +219,15 @@ fn match_parens(expression: &mut Expression) {
             if open_parens.len() == 0 {
                 raise_compiler_error(MismatchedParentheses(expression.line.line_num));
             }
-            expression.paren_matches[i] = open_parens.pop().unwrap();
+            paren_matches[i] = open_parens.pop().unwrap();
         }
     }
 
     if open_parens.len() != 0 {
         raise_compiler_error(MismatchedParentheses(expression.line.line_num));
     }
+
+    paren_matches
 }
 
 fn expression_node(line: &Line,
@@ -238,8 +236,7 @@ fn expression_node(line: &Line,
                    types: &HashMap<String, Rc<Type>>,
                    namespace: Rc<Namespace>
 ) -> Result<Box<dyn ASTNode>, CompilerError> {
-    let mut paren_matches = vec![end - start];
-    let mut expression = Expression::new(line, start, end, paren_matches.as_mut_slice(), types, namespace);
-    match_parens(&mut expression);
+    let mut expression = Expression::new(line, start, end, types, namespace);
+    expression.paren_matches = &match_parens(&expression);
     parse_expression(&mut expression)
 }
