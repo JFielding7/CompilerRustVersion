@@ -2,32 +2,47 @@ use std::cell::{Ref, RefCell};
 use std::collections::HashMap;
 use std::rc::Rc;
 use crate::data_type::Type;
+use crate::function_node::Function;
+
+pub struct SourceFile {
+    functions: Vec<Function>
+}
+
+impl SourceFile {
+    pub fn new() -> Self {
+        Self { functions: Vec::new() }
+    }
+
+    pub fn add_function(&mut self, function: Function) {
+        self.functions.push(function);
+    }
+}
 
 pub trait ASTNode {
     fn get_type(&self) -> Rc<Type>;
 }
 
 #[derive(Debug)]
-pub struct VarNode<'a> {
+pub struct VarNode {
     data_type: Rc<Type>,
-    name: &'a String,
+    name: Rc<String>,
 }
 
-impl ASTNode for VarNode<'_> {
+impl ASTNode for VarNode {
     fn get_type(&self) -> Rc<Type> {
         self.data_type.clone()
     }
 }
 
-impl<'a> VarNode<'a> {
-    pub fn new(data_type: Rc<Type>, name: &'a String) -> Self {
+impl VarNode {
+    pub fn new(data_type: Rc<Type>, name: Rc<String>) -> Self {
         Self { data_type, name }
     }
 }
 
-impl Clone for VarNode<'_> {
+impl Clone for VarNode {
     fn clone(&self) -> Self {
-        VarNode::new(self.data_type.clone(), self.name)
+        Self::new(self.data_type.clone(), self.name.clone())
     }
 }
 
@@ -45,42 +60,6 @@ impl ASTNode for Literal {
 impl Literal {
     pub fn new(data_type: Rc<Type>, value: Rc<String>) -> Self {
         Self { data_type, value }
-    }
-}
-
-pub struct Function<'a> {
-    ret_type: Rc<Type>,
-    name: &'a String,
-    pub param_count: usize,
-    pub namespace: Rc<RefCell<Namespace<'a>>>,
-    body: Vec<Box<dyn ASTNode>>
-}
-
-impl ASTNode for Function<'_> {
-    fn get_type(&self) -> Rc<Type> {
-        self.ret_type.clone()
-    }
-}
-
-impl<'a> Function<'a> {
-    pub fn new(ret_type: Rc<Type>, name: &'a String) -> Self {
-        Self {
-            ret_type,
-            name,
-            param_count: 0,
-            namespace: Rc::new(RefCell::new(Namespace::new())),
-            body: Vec::new(),
-        }
-    }
-
-    pub fn add_param(&'a mut self, var: VarNode<'a>) {
-        self.param_count += 1;
-        self.add_var(var);
-    }
-
-    pub fn add_var(&'a mut self, var: VarNode<'a>) {
-        let mut x = self.namespace.borrow_mut();
-        x.add_var(var);
     }
 }
 
@@ -104,18 +83,18 @@ impl ASTNode for BinaryOperator {
 }
 
 #[derive(Debug)]
-pub struct Namespace<'a> {
-    vars: HashMap<&'a String, VarNode<'a>>,
-    pub parent: Option<Rc<RefCell<Namespace<'a>>>>
+pub struct Namespace {
+    vars: HashMap<Rc<String>, VarNode>,
+    pub parent: Option<Rc<RefCell<Namespace>>>
 }
 
-impl<'a> Namespace<'a> {
+impl Namespace {
     pub fn new() -> Self {
         Self { vars: HashMap::new(), parent: None }
     }
 
-    pub fn contains_var(&self, var_name: &String) -> bool {
-        self.vars.contains_key(var_name)
+    pub fn contains_var(&self, var_name: Rc<String>) -> bool {
+        self.vars.contains_key(&var_name)
     }
 
     pub fn get_var(&self, var_name: &String) -> Option<VarNode> {
@@ -135,7 +114,7 @@ impl<'a> Namespace<'a> {
         None
     }
 
-    pub fn add_var(&'a mut self, var_node: VarNode<'a>) {
-        self.vars.insert(var_node.name, var_node);
+    pub fn add_var(&mut self, var_node: VarNode) {
+        self.vars.insert(var_node.name.clone(), var_node);
     }
 }

@@ -1,5 +1,3 @@
-// use crate::ast::generate_ast;
-use crate::data_type::compile_native_types;
 
 mod tokenizer;
 // mod ast;
@@ -8,6 +6,7 @@ mod compiler_error;
 mod ast_node;
 mod data_type;
 mod ast;
+mod function_node;
 // mod expression;
 
 fn main() {

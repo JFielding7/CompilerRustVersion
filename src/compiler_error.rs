@@ -10,6 +10,8 @@ pub enum CompilerError {
     InvalidAssignment(usize),
     #[error("Error: Line {0}: Invalid Expression")]
     InvalidExpression(usize),
+    #[error("Error: Line {0}: Type `{1}` is not defined")]
+    UndefinedType(usize, String),
     #[error("Error: Line {0}: Symbol `{1}` already defined")]
     SymbolAlreadyDefined(usize, String),
     #[error("Error: Line {0}: Expected `{1}`")]

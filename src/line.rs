@@ -1,3 +1,5 @@
+use std::ops::Index;
+use std::rc::Rc;
 use crate::compiler_error::{raise_compiler_error, CompilerError};
 use crate::compiler_error::CompilerError::IndentError;
 
@@ -8,7 +10,7 @@ pub struct Line<'a> {
     pub end: usize,
     pub indent: usize,
     pub file_name: &'a String,
-    pub tokens: &'a [String],
+    pub tokens: &'a [Rc<String>],
 }
 
 impl<'a> Line<'a> {
@@ -20,7 +22,7 @@ impl<'a> Line<'a> {
         self.tokens.len()
     }
 
-    fn set_indent_level(&mut self, tokens: &Vec<String>) -> Result<(), CompilerError> {
+    fn set_indent_level(&mut self, tokens: &Vec<Rc<String>>) -> Result<(), CompilerError> {
         const TAB_WIDTH: usize = 4;
 
         let mut count = 0;
@@ -41,13 +43,21 @@ impl<'a> Line<'a> {
     }
 }
 
+impl Index<usize> for Line<'_> {
+    type Output = Rc<String>;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        &self.tokens[index]
+    }
+}
+
 pub struct LineIterator<'a> {
     curr_line: Line<'a>,
-    tokens: &'a Vec<String>,
+    tokens: &'a Vec<Rc<String>>,
 }
 
 impl<'a> LineIterator<'a> {
-    pub fn new(filename: &'a String, tokens: &'a Vec<String>) -> Self {
+    pub fn new(filename: &'a String, tokens: &'a Vec<Rc<String>>) -> Self {
         LineIterator {
             curr_line: Line {
                 line_num: 0,
