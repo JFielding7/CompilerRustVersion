@@ -46,7 +46,7 @@ fn assert_correct_delimiter(i: usize, line: &Line) {
     }
 }
 
-fn var_def_node(data_type: Rc<Type>, line: &Line, namespace: Rc<RefCell<Namespace>>) -> VarNode {
+fn var_def_node<'a>(data_type: Rc<Type>, line: &'a Line<'a>, namespace: Rc<RefCell<Namespace<'a>>>) -> VarNode<'a> {
     const VAR_NAME_INDEX: usize = 1;
 
     let var_name = &line.tokens[1];
@@ -58,7 +58,7 @@ fn var_def_node(data_type: Rc<Type>, line: &Line, namespace: Rc<RefCell<Namespac
     var_node
 }
 
-fn function_def_node(ret_type: Rc<Type>, line: &Line, types: &HashMap<String, Rc<Type>>) -> Function {
+fn function_def_node<'a>(ret_type: Rc<Type>, line: &'a Line<'a>, types: &'a HashMap<String, Rc<Type>>) -> Function<'a> {
     const NAME_INDEX: usize = 1;
     const PARAM_START_INDEX: usize = 3;
 

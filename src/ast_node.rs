@@ -8,26 +8,26 @@ pub trait ASTNode {
 }
 
 #[derive(Debug)]
-pub struct VarNode {
+pub struct VarNode<'a> {
     data_type: Rc<Type>,
-    name: Rc<String>,
+    name: &'a String,
 }
 
-impl<'a> ASTNode for VarNode {
+impl ASTNode for VarNode<'_> {
     fn get_type(&self) -> Rc<Type> {
         self.data_type.clone()
     }
 }
 
-impl VarNode {
-    pub fn new(data_type: Rc<Type>, name: Rc<String>) -> Self {
+impl<'a> VarNode<'a> {
+    pub fn new(data_type: Rc<Type>, name: &'a String) -> Self {
         Self { data_type, name }
     }
 }
 
-impl Clone for VarNode {
+impl Clone for VarNode<'_> {
     fn clone(&self) -> Self {
-        VarNode::new(self.data_type.clone(), self.name.clone())
+        VarNode::new(self.data_type.clone(), self.name)
     }
 }
 
@@ -52,11 +52,11 @@ pub struct Function<'a> {
     ret_type: Rc<Type>,
     name: &'a String,
     pub param_count: usize,
-    pub namespace: Rc<RefCell<Namespace>>,
+    pub namespace: Rc<RefCell<Namespace<'a>>>,
     body: Vec<Box<dyn ASTNode>>
 }
 
-impl<'a> ASTNode for Function<'a> {
+impl ASTNode for Function<'_> {
     fn get_type(&self) -> Rc<Type> {
         self.ret_type.clone()
     }
@@ -73,21 +73,16 @@ impl<'a> Function<'a> {
         }
     }
 
-    pub fn add_param(&mut self, var: VarNode) {
-        self.add_var(var);
+    pub fn add_param(&'a mut self, var: VarNode<'a>) {
         self.param_count += 1;
+        self.add_var(var);
     }
 
-    pub fn add_var(&mut self, var: VarNode) {
-        self.namespace.borrow_mut().add_var(var);
+    pub fn add_var(&'a mut self, var: VarNode<'a>) {
+        let mut x = self.namespace.borrow_mut();
+        x.add_var(var);
     }
 }
-
-struct Node {
-
-}
-
-
 
 pub struct BinaryOperator {
     data_type: Rc<Type>,
@@ -109,12 +104,12 @@ impl ASTNode for BinaryOperator {
 }
 
 #[derive(Debug)]
-pub struct Namespace {
-    vars: HashMap<Rc<String>, VarNode>,
-    pub parent: Option<Rc<RefCell<Namespace>>>
+pub struct Namespace<'a> {
+    vars: HashMap<&'a String, VarNode<'a>>,
+    pub parent: Option<Rc<RefCell<Namespace<'a>>>>
 }
 
-impl Namespace {
+impl<'a> Namespace<'a> {
     pub fn new() -> Self {
         Self { vars: HashMap::new(), parent: None }
     }
@@ -140,7 +135,7 @@ impl Namespace {
         None
     }
 
-    pub fn add_var(&mut self, var_node: VarNode) {
-        self.vars.insert(var_node.name.clone(), var_node);
+    pub fn add_var(&'a mut self, var_node: VarNode<'a>) {
+        self.vars.insert(var_node.name, var_node);
     }
 }
